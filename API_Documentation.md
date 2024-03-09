@@ -1,4 +1,6 @@
 
+---
+
 # Documentación de la API
 
 Esta documentación detalla todas las rutas disponibles en la API, junto con sus parámetros y métodos HTTP correspondientes.
@@ -69,6 +71,16 @@ Esta documentación detalla todas las rutas disponibles en la API, junto con sus
 - **Método HTTP:** GET
 - **Parámetros:** Ninguno
 - **Respuesta Exitosa:** 200 OK - Retorna una lista de consultas generadas aleatoriamente.
+- **Respuesta de Error:** 500 Internal Server Error - Si ocurre algún error interno en el servidor.
+
+## Realizar Pruebas Unitarias
+
+**Descripción:** Esta ruta realiza pruebas unitarias con nombres aleatorios de Pokémon.
+
+- **Ruta:** `/test/unit`
+- **Método HTTP:** GET
+- **Parámetros:** Ninguno
+- **Respuesta Exitosa:** 200 OK - Retorna un mensaje indicando que la prueba unitaria fue exitosa.
 - **Respuesta de Error:** 500 Internal Server Error - Si ocurre algún error interno en el servidor.
 
 ---
