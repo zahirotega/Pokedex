@@ -3,7 +3,7 @@ const express = require('express');
 // Importar axios para realizar solicitudes HTTP
 const axios = require('axios');
 // Importar MongoClient para interactuar con MongoDB
-const { MongoClient } = require('mongodb');
+const { MongoClient, ObjectId } = require('mongodb');
 
 // Crear una instancia de la aplicación Express
 const app = express();
@@ -15,9 +15,27 @@ app.get('/pokemon/all', async (req, res) => {
     let client;
 
     try {
-        // Realizar la solicitud GET a la API de PokeAPI para obtener todos los Pokémon
-        const response = await axios.get('https://pokeapi.co/api/v2/pokemon/');
-        const allPokemonData = response.data.results;
+        let offset = 0;
+        let limit = 20; // Número de Pokémon por página
+        let allPokemonData = [];
+
+        // Realizar solicitudes a la API de PokeAPI hasta obtener todos los Pokémon
+        while (true) {
+            // Realizar la solicitud GET a la API de PokeAPI para obtener los Pokémon de la página actual
+            const response = await axios.get(`https://pokeapi.co/api/v2/pokemon/?offset=${offset}&limit=${limit}`);
+            const pokemonData = response.data.results;
+
+            // Si no hay más Pokémon en la página, detener el ciclo
+            if (pokemonData.length === 0) {
+                break;
+            }
+
+            // Agregar los Pokémon de la página actual al array
+            allPokemonData = allPokemonData.concat(pokemonData);
+
+            // Incrementar el offset para obtener la siguiente página
+            offset += limit;
+        }
 
         // Conexión a MongoDB Atlas
         const uri = "mongodb+srv://zahircontacto:vnBnP4zab1khcsKe@cluster0.dtrgppr.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0";
@@ -31,15 +49,22 @@ app.get('/pokemon/all', async (req, res) => {
         const db = client.db();
         const collection = db.collection('pokemons');
 
+        // Crear un array para almacenar todas las promesas de inserción
+        const insertPromises = [];
+
         // Iterar sobre cada Pokémon y guardar solo las primeras 4 habilidades en MongoDB
         for (let pokemon of allPokemonData) {
             const pokemonName = pokemon.name;
             const pokemonResponse = await axios.get(`https://pokeapi.co/api/v2/pokemon/${pokemonName}`);
             const pokemonData = pokemonResponse.data;
             pokemonData.moves = pokemonData.moves.slice(0, 4); // Obtener solo las primeras 4 habilidades
-            await collection.insertOne(pokemonData);
+            // Agregar la promesa de inserción al array
+            insertPromises.push(collection.insertOne(pokemonData));
             console.log(`Se ha insertado el Pokémon ${pokemonName} en la base de datos`);
         }
+
+        // Esperar a que todas las promesas de inserción se completen
+        await Promise.all(insertPromises);
 
         res.send('Todos los Pokémon han sido guardados en la base de datos');
     } catch (error) {
@@ -52,6 +77,8 @@ app.get('/pokemon/all', async (req, res) => {
         }
     }
 });
+
+
 
 // Ruta para borrar todos los Pokémon de la base de datos
 app.delete('/pokemon/all', async (req, res) => {
@@ -132,6 +159,11 @@ app.delete('/pokemon/id/:id', async (req, res) => {
     try {
         const pokemonId = req.params.id;
 
+        // Validar si el ID es un ObjectId válido
+        if (!ObjectId.isValid(pokemonId)) {
+            return res.status(400).send('El ID del Pokémon no es válido');
+        }
+
         // Conexión a MongoDB Atlas
         const uri = "mongodb+srv://zahircontacto:vnBnP4zab1khcsKe@cluster0.dtrgppr.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0";
         client = new MongoClient(uri, {
@@ -174,7 +206,12 @@ app.get('/pokemon/list', async (req, res) => {
         const limit = parseInt(req.query.limit) || 0;
         const typeName = req.query.type || '';
         const order = req.query.order || '';
-        const id = req.query.id || '';
+        const id = req.query.id || ''; // Cambiar req.params por req.query
+
+        // Verificar si el parámetro de límite es mayor que 1 y si se está filtrando por ID
+        if (limit > 1 && id) {
+            return res.status(400).send('Desactiva el parámetro de límite o configúralo en 1 cuando filtres por ID');
+        }
 
         // Conexión a MongoDB Atlas
         const uri = "mongodb+srv://zahircontacto:vnBnP4zab1khcsKe@cluster0.dtrgppr.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0";
@@ -194,7 +231,7 @@ app.get('/pokemon/list', async (req, res) => {
             query['types.type.name'] = typeName;
         }
         if (id) {
-            query._id = id;
+            query._id = ObjectId(id); // Convertir el ID a ObjectId
         }
 
         // Ordenar los resultados si se proporciona el parámetro de orden
@@ -230,6 +267,9 @@ app.get('/pokemon/list', async (req, res) => {
         }
     }
 });
+
+
+
 
 
 // Ruta para obtener un Pokémon por nombre
@@ -275,14 +315,65 @@ app.get('/pokemon/:name', async (req, res) => {
     }
 });
 
-// Ruta para realizar pruebas de carga
+
+// Ruta para obtener un Pokémon por su ID
+app.get('/pokemon/id/:id', async (req, res) => {
+    let client;
+
+    try {
+        // Obtener parámetros de la solicitud
+        const pokemonId = parseInt(req.params.id); // Convertir el ID a un número entero
+        
+        // Validar si el ID es un número válido
+        if (isNaN(pokemonId)) {
+            return res.status(400).send('El ID del Pokémon debe ser un número entero');
+        }
+
+        // Conexión a MongoDB Atlas
+        const uri = "mongodb+srv://zahircontacto:vnBnP4zab1khcsKe@cluster0.dtrgppr.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0";
+        client = new MongoClient(uri, {
+          useNewUrlParser: true,
+          useUnifiedTopology: true
+        });
+
+        // Conectar a la base de datos
+        await client.connect();
+        const db = client.db();
+        const collection = db.collection('pokemons');
+
+        // Construir la consulta de búsqueda por ID
+        const query = { _id: pokemonId };
+
+        // Ejecutar la consulta de búsqueda
+        const pokemon = await collection.findOne(query, { projection: { _id: 1, name: 1, moves: { $slice: 4 }, types: 1 } });
+
+        if (!pokemon) {
+            return res.status(404).send('Pokémon no encontrado');
+        }
+
+        // Responder con el resultado
+        res.send(pokemon);
+    } catch (error) {
+        console.error(error);
+        res.status(500).send('Error interno del servidor');
+    } finally {
+        // Cerrar la conexión con la base de datos al finalizar
+        if (client) {
+            await client.close();
+        }
+    }
+});
+
+
 app.get('/test/load', async (req, res) => {
+    let client; // Definir client fuera del bloque try
+
     try {
         const PORT = process.env.PORT || 3001;
 
         // Conexión a MongoDB Atlas
         const uri = "mongodb+srv://zahircontacto:vnBnP4zab1khcsKe@cluster0.dtrgppr.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0";
-        const client = new MongoClient(uri, {
+        client = new MongoClient(uri, {
           useNewUrlParser: true,
           useUnifiedTopology: true
         });
@@ -315,6 +406,7 @@ app.get('/test/load', async (req, res) => {
     }
 });
 
+
 // Ruta para realizar pruebas unitarias con nombres aleatorios de Pokémon
 app.get('/test/unit', async (req, res) => {
     try {
@@ -335,6 +427,7 @@ app.get('/test/unit', async (req, res) => {
         res.status(500).send('Error interno del servidor');
     }
 });
+
 
 // Iniciar el servidor Express
 app.listen(PORT, () => {
