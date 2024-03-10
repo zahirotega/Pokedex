@@ -1,9 +1,12 @@
+https://elements.getpostman.com/redirect?entityId=33500005-a711ca00-9750-4fb1-8c5c-c94832fb5f9e&entityType=collection
+-----------------------------------------------------------------------------------------------
 {
 	"info": {
 		"_postman_id": "a711ca00-9750-4fb1-8c5c-c94832fb5f9e",
 		"name": "Pokedex",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
-		"_exporter_id": "33500005"
+		"_exporter_id": "33500005",
+		"_collection_link": "https://www.postman.com/spacecraft-observer-93260927/workspace/pokedex/collection/33500005-a711ca00-9750-4fb1-8c5c-c94832fb5f9e?action=share&source=collection_link&creator=33500005"
 	},
 	"item": [
 		{
@@ -25,7 +28,7 @@
 		{
 			"name": "Borrar todos pokemones a mongodb",
 			"request": {
-				"method": "DELETE",
+				"method": "GET",
 				"header": []
 			},
 			"response": []
@@ -41,7 +44,7 @@
 		{
 			"name": "Borrar un Pokémon Específico de la Base de Datos por su nombre",
 			"request": {
-				"method": "DELETE",
+				"method": "GET",
 				"header": []
 			},
 			"response": []
@@ -49,7 +52,7 @@
 		{
 			"name": "Borrar un Pokémon específico de la base de datos por su ID",
 			"request": {
-				"method": "DELETE",
+				"method": "GET",
 				"header": []
 			},
 			"response": []
